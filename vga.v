@@ -80,3 +80,67 @@ module char_rom (
         endcase
     end
 endmodule
+module vga_keyboard_display (
+    input wire clk,
+    input wire reset,
+    input wire ps2_clk,
+    input wire ps2_data,
+    output wire hsync,
+    output wire vsync,
+    output reg [2:0] red,
+    output reg [2:0] green,
+    output reg [1:0] blue
+);
+
+    wire video_active;
+    wire [9:0] pixel_x, pixel_y;
+    wire [7:0] ascii_code;
+    wire [7:0] bitmap;
+    wire new_key;
+
+    reg [7:0] displayed_char = 8'h41;
+
+    vga_controller vga_inst (
+        .clk(clk),
+        .reset(reset),
+        .hsync(hsync),
+        .vsync(vsync),
+        .video_active(video_active),
+        .pixel_x(pixel_x),
+        .pixel_y(pixel_y)
+    );
+
+    keyboard_interface keyboard_inst (
+        .clk(clk),
+        .ps2_clk(ps2_clk),
+        .ps2_data(ps2_data),
+        .ascii_code(ascii_code),
+        .new_key(new_key)
+    );
+
+    char_rom char_rom_inst (
+        .ascii_code(displayed_char),
+        .row(pixel_y[3:0]),
+        .bitmap(bitmap)
+    );
+
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            displayed_char <= 8'h41; // Default to 'A'
+        else if (new_key)
+            displayed_char <= ascii_code;
+    end
+
+    always @(*) begin
+        if (video_active && bitmap[pixel_x[2:0]]) begin
+            red = 3'b111;
+            green = 3'b111;
+            blue = 2'b11;
+        end else begin
+            red = 3'b000;
+            green = 3'b000;
+            blue = 2'b00;
+        end
+    end
+endmodule
+
