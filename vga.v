@@ -1,34 +1,12 @@
-module mac(
-    input logic [7:0] a,
-    input logic [7:0] b,
-    input logic clk,
-    input logic rst,
-    output logic [15:0] out
-);
-    logic [15:0] product;
-    logic [15:0] accumulator;
+module mac_tb;
 
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst)
-            accumulator <= 16'b0;
-        else
-            accumulator <= accumulator + product;
-    end
+    reg [7:0] a;        // Input A
+    reg [7:0] b;        // Input B
+    reg clk;             // Clock signal
+    reg rst;             // Reset signal
+    wire [15:0] out;     // Output (result of multiplication and accumulation)
 
-    assign product = a * b;
-    assign out = accumulator;
-endmodule
-module mac_top(
-    input logic clk,
-    input logic rst,
-    output logic [15:0] out
-);
-    localparam NUM_VALUES = 10;
-    logic [7:0] a, b;
-    logic [3:0] mem_index;
-    logic [7:0] a_mem[NUM_VALUES-1:0];
-    logic [7:0] b_mem[NUM_VALUES-1:0];
-
+    // Instantiate the MAC module
     mac mac_inst (
         .a(a),
         .b(b),
@@ -37,26 +15,52 @@ module mac_top(
         .out(out)
     );
 
+    // Clock generation
+    always begin
+        #5 clk = ~clk;  // Toggle every 5 time units, 100 MHz clock
+    end
+
+    // Test procedure
     initial begin
-        a_mem[0] = 8'd0; b_mem[0] = 8'd0;
-        a_mem[1] = 8'd1; b_mem[1] = 8'd1;
-        a_mem[2] = 8'd2; b_mem[2] = 8'd2;
-        a_mem[3] = 8'd3; b_mem[3] = 8'd3;
-        a_mem[4] = 8'd4; b_mem[4] = 8'd4;
-        a_mem[5] = 8'd5; b_mem[5] = 8'd5;
-        a_mem[6] = 8'd6; b_mem[6] = 8'd6;
-        a_mem[7] = 8'd7; b_mem[7] = 8'd7;
-        a_mem[8] = 8'd8; b_mem[8] = 8'd8;
-        a_mem[9] = 8'd9; b_mem[9] = 8'd9;
+        // Initialize signals
+        clk = 0;
+        rst = 0;
+        a = 8'd0;
+        b = 8'd0;
+
+        // Print header for simulation
+        $display("Time\t\ta\tb\tout");
+
+        // Monitor the output
+        $monitor("%g\t%h\t%h\t%h", $time, a, b, out);
+
+        // Test 1: Apply reset and check output
+        rst = 1;  // Assert reset
+        #10;
+        rst = 0;  // Deassert reset
+        #10;
+
+        // Test 2: Apply values to inputs and check multiplication result
+        a = 8'd2; b = 8'd3;  // 2 * 3 = 6
+        #10;
+        
+        a = 8'd5; b = 8'd4;  // 5 * 4 = 20
+        #10;
+
+        a = 8'd6; b = 8'd7;  // 6 * 7 = 42
+        #10;
+
+        // Test 3: Check accumulation, previous results should accumulate
+        a = 8'd1; b = 8'd2;  // 1 * 2 = 2, adding previous results (6 + 20 + 42 + 2 = 70)
+        #10;
+
+        // Test 4: Reset and check output should go to zero
+        rst = 1;  // Assert reset again
+        #10;
+        rst = 0;  // Deassert reset
+
+        // End simulation
+        $finish;
     end
 
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst)
-            mem_index <= 4'b0;
-        else if (mem_index < NUM_VALUES - 1)
-            mem_index <= mem_index + 1;
-    end
-
-    assign a = a_mem[mem_index];
-    assign b = b_mem[mem_index];
 endmodule
